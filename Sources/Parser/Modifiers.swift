@@ -71,7 +71,7 @@ public extension Parser {
     ///   - allowEmpty: accept no instances of elements and separators, returning an empty array.
     ///   - allowTrailingSeparator: accept a single trailing separator in list.
     /// - Returns: A sequence parser which will greedily parse as many elements from its calling parser with a configured separator.
-    func sequence<U>(separator: Parser<U> = Parser<Character>.character(",") *> (Parser<String?>.optionalWhitespace()), allowEmpty: Bool = true, allowTrailingSeparator: Bool = true) -> Parser<[T]> {
+    func sequence<U>(separator: Parser<U> = Parser<Character>.token(",") *> (Parser<String?>.optionalWhitespace()), allowEmpty: Bool = true, allowTrailingSeparator: Bool = true) -> Parser<[T]> {
         .init { input in
             var results: [T] = []
             
@@ -139,7 +139,7 @@ public extension Parser {
     /// wrapping it with a `String` to provide additional context as to where the error was thrown.
     /// - Parameter label: A descriptive label to add context to an error.
     /// - Returns: The calling parser with context attached to its error case.
-    public func context(_ label: String) -> Parser<T> {
+    func context(_ label: String) -> Parser<T> {
         .init { input in
             do {
                 return try self.run(&input)
@@ -157,7 +157,7 @@ public extension Parser {
     ///
     /// Trailing input which remains unconsumed will trigger an .incompleteParser error
     /// - Returns: Return the calling parser with a requirement to completely consume the input.
-    public func complete() -> Parser<T> {
+    func complete() -> Parser<T> {
         .init { input in
             do {
                 let result = try self.run(&input)
@@ -175,7 +175,7 @@ public extension Parser {
     ///
     /// Extract first error from an `.eitherError`.
     /// - Returns: In the case of an `.eitherError` being thrown, throw its `firstError`, otherwise just catch and re-throw the error.
-    public func firstError() -> Parser<T> {
+    func firstError() -> Parser<T> {
         .init { input in
             do {
                 return try self.run(&input)
@@ -192,7 +192,7 @@ public extension Parser {
     ///
     /// Extract second error from an `.eitherError`.
     /// - Returns: In the case of an `.eitherError` being thrown, throw its `secondError`, otherwise just catch and re-throw the error.
-    public func secondError() -> Parser<T> {
+    func secondError() -> Parser<T> {
         .init { input in
             do {
                 return try self.run(&input)

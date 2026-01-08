@@ -79,48 +79,50 @@ struct CommonParsers {
             #expect(input.isEmpty)
         }
     }
-    
-    @Suite
-    struct CharacterParser {
-        @Test
-        func testSuccess() {
-            var input: Substring = "abc"
-            let parser: Parser<Character> = .character("a")
-            let result = try? parser.run(&input)
-            #expect(result == "a")
-            #expect(input == "bc")
-        }
-        
-        @Test
-        func testFailure() {
-            var input: Substring = "abc"
-            let parser: Parser = .character("x")
-            #expect(throws: ParseError.expectedCharacter("x")) {
-                try parser.run(&input)
-            }
-            #expect(input == "abc")
-        }
-    }
-    
+
     @Suite
     struct TokenParser {
-        @Test
-        func testSuccess() {
-            var input: Substring = "hello world"
-            let parser: Parser = .token("hello")
-            let result = try? parser.run(&input)
-            #expect(result == "hello")
-            #expect(input == " world")
-        }
-        
-        @Test
-        func testFailure() {
-            var input: Substring = "hey"
-            let parser: Parser = .token("hello")
-            #expect(throws: ParseError.expectedToken(.one("hello"))) {
-                try parser.run(&input)
+        @Suite
+        struct Character {
+            @Test
+            func testSuccess() {
+                var input: Substring = "abc"
+                let parser: Parser = .token("a")
+                let result = try? parser.run(&input)
+                #expect(result == "a")
+                #expect(input == "bc")
             }
-            #expect(input == "hey")
+            
+            @Test
+            func testFailure() {
+                var input: Substring = "abc"
+                let parser: Parser = .token("x")
+                #expect(throws: ParseError.expectedToken("x")) {
+                    try parser.run(&input)
+                }
+                #expect(input == "abc")
+            }
+        }
+        @Suite
+        struct String {
+            @Test
+            func testSuccess() {
+                var input: Substring = "hello world"
+                let parser: Parser = .token("hello")
+                let result = try? parser.run(&input)
+                #expect(result == "hello")
+                #expect(input == " world")
+            }
+            
+            @Test
+            func testFailure() {
+                var input: Substring = "hey"
+                let parser: Parser = .token("hello")
+                #expect(throws: ParseError.expectedToken("hello")) {
+                    try parser.run(&input)
+                }
+                #expect(input == "hey")
+            }
         }
     }
     
@@ -162,7 +164,7 @@ struct CommonParsers {
         @Test
         func testStopsBeforeTerminator() {
             var input: Substring = "abc;def"
-            let parser: Parser = .until(terminator: .character(";"))
+            let parser: Parser = .until(terminator: .token(";"))
             let result = try? parser.run(&input)
             #expect(result == "abc")
             #expect(input == ";def")
@@ -172,7 +174,7 @@ struct CommonParsers {
         func testConsumesTerminatorWhenConfigured() {
             var input: Substring = "abc;def"
             let parser: Parser = .until(
-                terminator: .character(";"),
+                terminator: .token(";"),
                 consumeTerminator: true
             )
             let result = try? parser.run(&input)
@@ -183,7 +185,7 @@ struct CommonParsers {
         @Test
         func testFailsWithoutTerminator() {
             var input: Substring = "abc"
-            let parser: Parser = .until(terminator: .character(";"))
+            let parser: Parser = .until(terminator: .token(";"))
             #expect(throws: ParseError.expectedTerminationSequence) {
                 try parser.run(&input)
             }
@@ -193,7 +195,7 @@ struct CommonParsers {
         func testAllowsEOFWhenConfigured() {
             var input: Substring = "abc"
             let parser: Parser = .until(
-                terminator: .character(";"),
+                terminator: .token(";"),
                 allowEOF: true
             )
             let result = try? parser.run(&input)
@@ -403,7 +405,7 @@ struct ParserModifiers {
     @Suite
     struct Atomic {
         var parser: Parser<(Character, Int)> { .init { input in
-            let parser1: Parser = .character("a")
+            let parser1: Parser<Character> = .token("a")
             let parser2: Parser = .number()
             
             let result1 = try parser1.run(&input)
@@ -440,7 +442,7 @@ struct ParserModifiers {
         @Test
         func testSuccessDoesNotRollback() {
             var input: Substring = "abc"
-            let parser: Parser = .character("a").atomic()
+            let parser: Parser = .token("a").atomic()
             let result = try! parser.run(&input)
             #expect(result == "a")
             #expect(input == "bc")
@@ -449,7 +451,7 @@ struct ParserModifiers {
         @Test
         func testFailureRollsBack() {
             var input: Substring = "abc"
-            let parser: Parser = .character("z").atomic()
+            let parser: Parser = .token("z").atomic()
             let result = try? parser.run(&input)
             #expect(result == nil)
             #expect(input == "abc")
@@ -467,8 +469,8 @@ struct ParserModifiers {
         @Test
         func testNestedAtomicRestoresInput() {
             var input: Substring = "abc"
-            let inner: Parser = .character("a").atomic()
-            let outer: Parser = (inner *> .character("z")).atomic()
+            let inner: Parser = .token("a").atomic()
+            let outer: Parser = (inner *> .token("z")).atomic()
             let result = try? outer.run(&input)
             #expect(result == nil)
             #expect(input == "abc")
@@ -496,7 +498,7 @@ struct ParserModifiers {
         @Test
         func testSuccessReturnsValue() {
             var input: Substring = "a"
-            let parser = Parser<Character>.character("a").optional()
+            let parser: Parser = .token("a").optional()
             let result = try! parser.run(&input)
             #expect(result == "a")
             #expect(input.isEmpty)
@@ -505,7 +507,7 @@ struct ParserModifiers {
         @Test
         func testFailureReturnsNilAndRestoresInput() {
             var input: Substring = "b"
-            let parser = Parser<Character>.character("a").optional()
+            let parser: Parser = .token("a").optional()
             let result = try! parser.run(&input)
             #expect(result == nil)
             #expect(input == "b")
@@ -514,7 +516,7 @@ struct ParserModifiers {
         @Test
         func testSuccessConsumesInput() {
             var input: Substring = "420"
-            let parser = Parser<Int>.number().optional()
+            let parser: Parser = .number().optional()
             let result = try! parser.run(&input)
             #expect(result == 420)
             #expect(input.isEmpty)
@@ -550,7 +552,7 @@ struct ParserModifiers {
         @Test
         func testDefaultFailureDoesNotConsumeInput() {
             var input: Substring = "abc"
-            let parser: Parser = .character("z").optional(defaultValue: "x")
+            let parser: Parser = .token("z").optional(defaultValue: "x")
             let result = try! parser.run(&input)
             #expect(result == "x")
             #expect(input == "abc")
@@ -571,7 +573,7 @@ struct ParserModifiers {
         @Test
         func testDiscardConsumesInputOnSuccess() {
             var input: Substring = "abc"
-            let parser = Parser.character("a").discard()
+            let parser: Parser = .token("a").discard()
             try! parser.run(&input)
             #expect(input == "bc")
         }
@@ -579,7 +581,7 @@ struct ParserModifiers {
         @Test
         func testDiscardLeavesInputOnFailure() {
             var input: Substring = "abc"
-            let parser = Parser.character("z").discard()
+            let parser: Parser = .token("z").discard()
             try? parser.run(&input)
             #expect(input == "abc")
         }
@@ -587,7 +589,7 @@ struct ParserModifiers {
         @Test
         func testDiscardReturnsVoid() {
             var input: Substring = "123"
-            let parser = Parser.number().discard()
+            let parser: Parser = .number().discard()
             let result: Void? = try? parser.run(&input)
             #expect(result != nil)
             #expect(input.isEmpty)
@@ -596,7 +598,7 @@ struct ParserModifiers {
         @Test
         func testDiscardFailureDoesNotConsumeInput() {
             var input: Substring = "abc"
-            let parser = Parser.number().discard()
+            let parser: Parser = .number().discard()
             try? parser.run(&input)
             #expect(input == "abc")
         }
@@ -604,7 +606,7 @@ struct ParserModifiers {
         @Test
         func testDiscardOnEmptyInputFails() {
             var input: Substring = ""
-            let parser = Parser.character("a").discard()
+            let parser: Parser = .token("a").discard()
             let result: Void? = try? parser.run(&input)
             #expect(result != nil)
             #expect(input.isEmpty)
@@ -616,7 +618,7 @@ struct ParserModifiers {
         @Test
         func testSingleElement() {
             var input: Substring = "a"
-            let parser = Parser.character("a").sequence()
+            let parser: Parser = .token("a").sequence()
             let result = try? parser.run(&input)
             #expect(result == ["a"])
             #expect(input.isEmpty)
@@ -625,7 +627,7 @@ struct ParserModifiers {
         @Test
         func testMultipleElements() {
             var input: Substring = "a, a, a"
-            let parser = Parser.character("a").sequence()
+            let parser: Parser = .token("a").sequence()
             let result = try? parser.run(&input)
             #expect(result == ["a", "a", "a"])
             #expect(input.isEmpty)
@@ -634,7 +636,7 @@ struct ParserModifiers {
         @Test
         func testEmptyAllowed() {
             var input: Substring = ""
-            let parser = Parser.character("a").sequence(allowEmpty: true)
+            let parser: Parser = .token("a").sequence(allowEmpty: true)
             let result = try! parser.run(&input)
             #expect(result.isEmpty)
             #expect(input.isEmpty)
@@ -643,7 +645,7 @@ struct ParserModifiers {
         @Test
         func testEmptyDisallowed() {
             var input: Substring = ""
-            let parser = Parser.character("a").sequence(allowEmpty: false)
+            let parser: Parser = .token("a").sequence(allowEmpty: false)
             let result = try? parser.run(&input)
             #expect(result == nil)
             #expect(input.isEmpty)
@@ -652,7 +654,7 @@ struct ParserModifiers {
         @Test
         func testTrailingSeparatorAllowed() {
             var input: Substring = "a, a, "
-            let parser = Parser.character("a").sequence(allowTrailingSeparator: true)
+            let parser: Parser = .token("a").sequence(allowTrailingSeparator: true)
             let result = try! parser.run(&input)
             #expect(result == ["a", "a"])
             #expect(input.isEmpty)
@@ -661,7 +663,7 @@ struct ParserModifiers {
         @Test
         func testTrailingSeparatorDisallowed() {
             var input: Substring = "a, a, "
-            let parser = Parser.character("a").sequence(allowTrailingSeparator: false)
+            let parser: Parser = .token("a").sequence(allowTrailingSeparator: false)
             let result = try? parser.run(&input)
             #expect(result == ["a", "a"])
             #expect(input == ", ")
@@ -670,8 +672,8 @@ struct ParserModifiers {
         @Test
         func testCustomSeparator() {
             var input: Substring = "a|a|a"
-            let separator = Parser.character("|").discard()
-            let parser = Parser.character("a").sequence(separator: separator)
+            let separator: Parser = .token("|").discard()
+            let parser: Parser = .token("a").sequence(separator: separator)
             let result = try! parser.run(&input)
             #expect(result == ["a", "a", "a"])
             #expect(input.isEmpty)
@@ -680,7 +682,7 @@ struct ParserModifiers {
         @Test
         func testStopsOnUnexpectedInput() {
             var input: Substring = "a, a, b"
-            let parser = Parser.character("a").sequence()
+            let parser: Parser = .token("a").sequence()
             let result = try! parser.run(&input)
             #expect(result == ["a", "a"])
             #expect(input == "b")
@@ -780,8 +782,8 @@ struct MonadicOperators {
     struct Alternative {
         enum Cases: Equatable { case i(Int), c(Character) }
         
-        var parser1: Parser<Cases> { Parser.number().map {.i($0)} }
-        var parser2: Parser<Cases> { Parser.character("X").map {.c($0)} }
+        var parser1: Parser<Cases> { .number().map {.i($0)} }
+        var parser2: Parser<Cases> { .token("X").map {.c($0)} }
         var transformedParser: Parser<Cases> { parser1 <|> parser2 }
         
         @Test
@@ -804,7 +806,7 @@ struct MonadicOperators {
         
         @Test
         func testFailuresPropagate() {
-            #expect(throws: ParseError.eitherError(.expectedNumber, .expectedCharacter("X"))) {
+            #expect(throws: ParseError.eitherError(.expectedNumber, .expectedToken("X"))) {
                 try transformedParser.run("Z")
             }
         }

@@ -18,6 +18,7 @@ public extension Parser {
         Parser<T>{ _ in throw err }
     }
     
+    @available(*, deprecated, renamed: "token(_:)", message: "character is deprecated, use functionally identical token instead")
     static func character(_ char: Character) -> Parser<Character> {
         .init { input in
             let original = input
@@ -32,15 +33,12 @@ public extension Parser {
         }
     }
     
-    static func character(where predicate: @Sendable @escaping (Character) -> Bool) -> Parser<Character> {
+    static func token(_ char: Character) -> Parser<Character> {
         .init { input in
-            let original = input
-            guard let nextChar = input.popFirst(), predicate(nextChar) else {
-                input = original
-                throw ParseError.expectedCharactersSatisfyingPredicate
-            }
-            return nextChar
-        }
+            guard let nextChar = input.popFirst(), nextChar == char
+            else { throw ParseError.expectedToken(.one("\(char)")) }
+            return char
+        }.atomic()
     }
     
     static func token(_ str: String) -> Parser<String> {
@@ -55,6 +53,17 @@ public extension Parser {
     /// A convenience Parser to return an empty void and perform no action
     static func empty() -> Parser<String> {
         .init { _ in "" }
+    }
+    
+    static func character(where predicate: @Sendable @escaping (Character) -> Bool) -> Parser<Character> {
+        .init { input in
+            let original = input
+            guard let nextChar = input.popFirst(), predicate(nextChar) else {
+                input = original
+                throw ParseError.expectedCharactersSatisfyingPredicate
+            }
+            return nextChar
+        }
     }
     
     static func predicate(allowEmpty: Bool = false, where predicate: @Sendable @escaping (Character) -> Bool) -> Parser<String> {
@@ -93,10 +102,10 @@ public extension Parser {
         }
     }
     
-    static func whitespace() -> Parser<String> {
+    static func whitespace(allowEmpty: Bool = false) -> Parser<String> {
         .init { input in
             let whitespace = input.prefix(while: \.isWhitespace)
-            if whitespace.isEmpty { throw ParseError.expectedWhitespace }
+            if !allowEmpty && whitespace.isEmpty { throw ParseError.expectedWhitespace }
             input.removeFirst(whitespace.count)
             return String(whitespace)
         }

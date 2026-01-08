@@ -29,20 +29,25 @@ public enum ParseError: Error, CustomStringConvertible, Equatable {
         }
     }
     
-    public enum ExpectedToken : Sendable, CustomStringConvertible, Equatable {
+    public enum ExpectedToken: Sendable, Equatable, ExpressibleByStringLiteral {
         case one(String)
         case oneOf([String])
         case sequence([String])
         
+        public init(stringLiteral value: String) {
+            self = .one(value)
+        }
+        
         public var description: String {
             switch (self) {
             case .one(let str): return "'\(str)'"
-            case .oneOf(let strs): return "[\(strs.map{"'\($0)'"}.joined(separator: ", "))]"
-            case .sequence(let strs): return "[\(strs.joined(separator: ", "))]"
+            case .oneOf(let strs): return "one of [\(strs.joined(separator: ", "))]"
+            case .sequence(let strs): return "sequence of [\(strs.joined(separator: ", "))]"
             }
         }
     }
     
+    @available(*, deprecated, renamed: "expectedToken(_:)", message: "Expected character will soon be deprecated in favour of expectedToken(_:)")
     case expectedCharacter(Character)
     case expectedWhitespace
     case expectedTerminationSequence

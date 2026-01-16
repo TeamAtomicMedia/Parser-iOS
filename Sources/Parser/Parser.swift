@@ -27,11 +27,16 @@ public struct Parser<T: Sendable> : Sendable {
     private let _run: Parse<T>
     
     public func run(_ substring: inout Substring) throws -> T { try _run(&substring) }
-    
+
     public func run(_ string: inout String) throws -> T {
         var substring = string[...]
         defer  { string = String(substring) }
         return try self.run(&substring)
+    }
+    
+    public func run(_ substring: Substring) throws -> T {
+        var substring = substring
+        return try _run(&substring)
     }
     
     public func run(_ string: String) throws -> T {

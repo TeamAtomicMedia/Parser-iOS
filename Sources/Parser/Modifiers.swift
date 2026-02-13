@@ -267,16 +267,20 @@ public extension Parser {
         .init { input in
             var results: [T] = []
             
-            guard let first = try? self.run(&input) else {
+            let first: T
+            do {
+                first = try self.run(&input)
+            } catch let error as ParseError {
                 if allowEmpty {
                     return results
                 }
-                throw ParseError.expectedSeparatedSequence
+                throw ParseError.expectedSeparatedSequence(error)
             }
             results.append(first)
             
             while !input.isEmpty {
                 let original = input
+                
                 if let _ = try? separator.run(&input) {
                     if let element = try? self.run(&input) {
                         results.append(element)
@@ -305,8 +309,11 @@ public extension Parser {
         .init { input in
             var results: [T] = []
             for _ in 0..<count {
-                guard let element = try? self.run(&input) else {
-                    throw ParseError.expectedRepeatingSequence(count, results.count)
+                let element: T
+                do {
+                    element = try self.run(&input)
+                } catch let error as ParseError {
+                    throw ParseError.expectedRepeatingSequence(count, results.count, error)
                 }
                 results.append(element)
             }
@@ -330,15 +337,16 @@ public extension Parser {
             var results: [T] = []
             
             while results.count < range.upperBound {
-                if let element = try? self.run(&input) {
-                    results.append(element)
-                } else {
+                let element: T
+                do {
+                    element = try self.run(&input)
+                } catch let error as ParseError {
+                    if results.count < range.lowerBound {
+                        throw ParseError.expectedRepeatingSequence(range.lowerBound, results.count, error)
+                    }
                     break
                 }
-            }
-            
-            if results.count < range.lowerBound {
-                throw ParseError.expectedRepeatingSequence(range.lowerBound, results.count)
+                results.append(element)
             }
             
             return results

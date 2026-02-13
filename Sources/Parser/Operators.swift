@@ -61,6 +61,10 @@ public extension Parser {
     func bind<B>(to parserBuilder: @Sendable @escaping (T) -> Parser<B>) -> Parser<B> {
         self >>= parserBuilder
     }
+    
+    func flatMap<B>(to parserBuilder: @Sendable @escaping (T) -> Parser<B>) -> Parser<B> {
+        self >>= parserBuilder
+    }
 }
 
 /// Bind left (discarding)

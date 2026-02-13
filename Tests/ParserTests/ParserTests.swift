@@ -614,82 +614,6 @@ struct ParserModifiers {
     }
     
     @Suite
-    struct Sequence {
-        @Test
-        func testSingleElement() {
-            var input: Substring = "a"
-            let parser: Parser = .token("a").sequence()
-            let result = try? parser.run(&input)
-            #expect(result == ["a"])
-            #expect(input.isEmpty)
-        }
-        
-        @Test
-        func testMultipleElements() {
-            var input: Substring = "a, a, a"
-            let parser: Parser = .token("a").sequence()
-            let result = try? parser.run(&input)
-            #expect(result == ["a", "a", "a"])
-            #expect(input.isEmpty)
-        }
-        
-        @Test
-        func testEmptyAllowed() {
-            var input: Substring = ""
-            let parser: Parser = .token("a").sequence(allowEmpty: true)
-            let result = try! parser.run(&input)
-            #expect(result.isEmpty)
-            #expect(input.isEmpty)
-        }
-        
-        @Test
-        func testEmptyDisallowed() {
-            var input: Substring = ""
-            let parser: Parser = .token("a").sequence(allowEmpty: false)
-            let result = try? parser.run(&input)
-            #expect(result == nil)
-            #expect(input.isEmpty)
-        }
-        
-        @Test
-        func testTrailingSeparatorAllowed() {
-            var input: Substring = "a, a, "
-            let parser: Parser = .token("a").sequence(allowTrailingSeparator: true)
-            let result = try! parser.run(&input)
-            #expect(result == ["a", "a"])
-            #expect(input.isEmpty)
-        }
-        
-        @Test
-        func testTrailingSeparatorDisallowed() {
-            var input: Substring = "a, a, "
-            let parser: Parser = .token("a").sequence(allowTrailingSeparator: false)
-            let result = try? parser.run(&input)
-            #expect(result == ["a", "a"])
-            #expect(input == ", ")
-        }
-        
-        @Test
-        func testCustomSeparator() {
-            var input: Substring = "a|a|a"
-            let separator: Parser = .token("|").discard()
-            let parser: Parser = .token("a").sequence(separator: separator)
-            let result = try! parser.run(&input)
-            #expect(result == ["a", "a", "a"])
-            #expect(input.isEmpty)
-        }
-        
-        @Test
-        func testStopsOnUnexpectedInput() {
-            var input: Substring = "a, a, b"
-            let parser: Parser = .token("a").sequence()
-            let result = try! parser.run(&input)
-            #expect(result == ["a", "a"])
-            #expect(input == "b")
-        }
-    }
-    
-    @Suite
     struct Context {
         @Test
         func testSuccessPassthrough() {
@@ -741,6 +665,187 @@ struct ParserModifiers {
             let result = try? parser.run(&input)
             #expect(result == nil)
             #expect(input == " ")
+        }
+    }
+    
+    @Suite
+    struct Separated {
+        @Test
+        func testSingleElement() {
+            var input: Substring = "a"
+            let parser: Parser = .token("a").separated(by: .token(","))
+            let result = try? parser.run(&input)
+            #expect(result == ["a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testMultipleElements() {
+            var input: Substring = "a,a,a"
+            let parser: Parser = .token("a").separated(by: .token(","))
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a", "a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testEmptyAllowed() {
+            var input: Substring = ""
+            let parser: Parser = .token("a").separated(by: .token(","), allowEmpty: true)
+            let result = try! parser.run(&input)
+            #expect(result.isEmpty)
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testEmptyDisallowed() {
+            var input: Substring = ""
+            let parser: Parser = .token("a").separated(by: .token(","), allowEmpty: false)
+            let result = try? parser.run(&input)
+            #expect(result == nil)
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testTrailingSeparatorAllowed() {
+            var input: Substring = "a,a,"
+            let parser: Parser = .token("a").separated(by: .token(","), consumeTrailingSeparator: true)
+            let result = try! parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testTrailingSeparatorDisallowed() {
+            var input: Substring = "a,a,"
+            let parser: Parser = .token("a").separated(by: .token(","), consumeTrailingSeparator: false)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input == ",")
+        }
+        
+        @Test
+        func testCustomSeparator() {
+            var input: Substring = "a|a|a"
+            let separator: Parser = .token("|").discard()
+            let parser: Parser = .token("a").separated(by: separator)
+            let result = try! parser.run(&input)
+            #expect(result == ["a", "a", "a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testStopsOnUnrecognisedElement() {
+            var input: Substring = "a,a,b"
+            let parser: Parser = .token("a").separated(by: .token(","), consumeTrailingSeparator: true)
+            let result = try! parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input == "b")
+        }
+    }
+    
+    @Suite
+    struct RepeatCount {
+        @Test
+        func testExactCount() {
+            var input: Substring = "aaa"
+            let parser: Parser = .token("a").repeat(for: 3)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a", "a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testExactCountStopsWithExtra() {
+            var input: Substring = "aaa"
+            let parser: Parser = .token("a").repeat(for: 2)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input == "a")
+        }
+        
+        @Test
+        func testEmpty() {
+            var input: Substring = "aaa"
+            let parser: Parser = .token("a").repeat(for: 0)
+            let result = try? parser.run(&input)
+            #expect(result == [])
+            #expect(input == "aaa")
+        }
+        
+        @Test
+        func testEmptyNonAllowed() {
+            var input: Substring = "aaa"
+            let parser: Parser = .token("a").repeat(for: 0, allowEmpty: false)
+            #expect(throws: ParseError.expectedNonZeroRepeatingSequence) {
+                try parser.run(&input)
+            }
+        }
+    }
+    
+    @Suite
+    struct RepeatRange {
+        @Test
+        func testExactCount() {
+            var input: Substring = "aa"
+            let parser: Parser = .token("a").repeat(in: 2...2)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testExactCountStopsWithExtra() {
+            var input: Substring = "aaa"
+            let parser: Parser = .token("a").repeat(in: 2...2)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input == "a")
+        }
+        
+        @Test
+        func testMinToMax() {
+            var input: Substring = "aa"
+            let parser: Parser = .token("a").repeat(in: 1...3)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input.isEmpty)
+        }
+        
+        @Test
+        func testFailsWhenBelowMin() {
+            var input: Substring = ""
+            let parser: Parser = .token("a").repeat(in: 1...3)
+            #expect(throws: ParseError.expectedRepeatingSequence(1, 0)) {
+                try parser.run(&input)
+            }
+        }
+        
+        @Test
+        func testRangeStopsWithExtra() {
+            var input: Substring = "aaaa"
+            let parser: Parser = .token("a").repeat(in: 1...2)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input == "aa")
+        }
+        
+        @Test
+        func testZero() {
+            var input: Substring = "b"
+            let parser: Parser = .token("a").repeat(in: 0...2)
+            let result = try? parser.run(&input)
+            #expect(result?.isEmpty ?? false)
+            #expect(input == "b")
+        }
+        
+        @Test
+        func testStopsAtMaxWithoutExtra() {
+            var input: Substring = "aab"
+            let parser: Parser = .token("a").repeat(in: 1...2)
+            let result = try? parser.run(&input)
+            #expect(result == ["a", "a"])
+            #expect(input == "b")
         }
     }
 }

@@ -23,6 +23,10 @@ public enum ParseError: Error, CustomStringConvertible, Equatable {
         case .expectedNumber: "Expected Number"
         case .expectedAlphaNumericString: "Expected AlphaNumericString"
         case .expectedCharactersSatisfyingPredicate: "Expected Characters Satisfying Predicate"
+        case .negativeLookaheadSucceeded: "Negative Lookahead Succeeded"
+        case .expectedSeparatedSequence: "Expected Separated Sequence"
+        case .expectedNonZeroRepeatingSequence: "Expected non-zero repetitions"
+        case .expectedRepeatingSequence(let expected, let got): "Expected \(expected) repetitions, got \(got)"
         case .incompleteParse(let remaining): "Incomplete Parse - Remaining: \n\(remaining)"
         case .contextualError(let context, let error): "- Parsing Error in \(context):\n\(error.description.indent(2))"
         case .eitherError(let firstError, let secondError): "Parsing Failed in Either:\n\("1. \(firstError.description)\n2. \(secondError.description)".indent(2))"
@@ -56,6 +60,10 @@ public enum ParseError: Error, CustomStringConvertible, Equatable {
     case expectedNumber
     case expectedAlphaNumericString
     case expectedCharactersSatisfyingPredicate
+    case negativeLookaheadSucceeded
+    case expectedSeparatedSequence
+    case expectedNonZeroRepeatingSequence
+    case expectedRepeatingSequence(Int, Int)
     case incompleteParse(Substring)
     indirect case contextualError(String, ParseError)
     indirect case eitherError(ParseError, ParseError)

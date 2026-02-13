@@ -15,7 +15,6 @@ fileprivate extension String {
 public enum ParseError: Error, CustomStringConvertible, Equatable {
     public var description: String {
         switch self {
-        case .expectedCharacter(let char): "Expected Character '\(char)'"
         case .expectedToken(let token): "Expected Token \(token)"
         case .expectedType(let typeName): "Expected Type '\(typeName)'"
         case .expectedWhitespace: "Expected Whitespace"
@@ -24,22 +23,27 @@ public enum ParseError: Error, CustomStringConvertible, Equatable {
         case .expectedAlphaNumericString: "Expected AlphaNumericString"
         case .expectedCharactersSatisfyingPredicate: "Expected Characters Satisfying Predicate"
         case .negativeLookaheadSucceeded: "Negative Lookahead Succeeded"
-        case .expectedSeparatedSequence: "Expected Separated Sequence"
-        case .expectedNonZeroRepeatingSequence: "Expected non-zero repetitions"
-        case .expectedRepeatingSequence(let expected, let got): "Expected \(expected) repetitions, got \(got)"
+        case .expectedSequence(let error): "Expected Sequence:\n\(error.description.indent(2))"
+        case .expectedNonZeroRepeatingSequence: "Expected Non-Zero Repetition Sequence"
+        case .expectedRepeatingSequence(let expected, let got, let error): "Expected \(expected) Repetitions, Got \(got):\n\(error.description.indent(2))"
         case .incompleteParse(let remaining): "Incomplete Parse - Remaining: \n\(remaining)"
         case .contextualError(let context, let error): "- Parsing Error in \(context):\n\(error.description.indent(2))"
         case .eitherError(let firstError, let secondError): "Parsing Failed in Either:\n\("1. \(firstError.description)\n2. \(secondError.description)".indent(2))"
         }
     }
     
-    public enum ExpectedToken: Sendable, Equatable, ExpressibleByStringLiteral {
+    public enum ExpectedToken: Sendable, Equatable, ExpressibleByStringLiteral, ExpressibleByArrayLiteral {
         case one(String)
         case oneOf([String])
+        @available(*, deprecated, renamed: "oneOf", message: "For expressing a sequence of expected tokens, use `.expectedSequence` instead.")
         case sequence([String])
         
         public init(stringLiteral value: String) {
             self = .one(value)
+        }
+        
+        public init(arrayLiteral elements: String...) {
+            self = .oneOf(elements)
         }
         
         public var description: String {
@@ -50,9 +54,7 @@ public enum ParseError: Error, CustomStringConvertible, Equatable {
             }
         }
     }
-    
-    @available(*, deprecated, renamed: "expectedToken(_:)", message: "Expected character will soon be deprecated in favour of expectedToken(_:)")
-    case expectedCharacter(Character)
+
     case expectedWhitespace
     case expectedTerminationSequence
     case expectedToken(ExpectedToken)
@@ -61,10 +63,10 @@ public enum ParseError: Error, CustomStringConvertible, Equatable {
     case expectedAlphaNumericString
     case expectedCharactersSatisfyingPredicate
     case negativeLookaheadSucceeded
-    case expectedSeparatedSequence
     case expectedNonZeroRepeatingSequence
-    case expectedRepeatingSequence(Int, Int)
     case incompleteParse(Substring)
     indirect case contextualError(String, ParseError)
     indirect case eitherError(ParseError, ParseError)
+    indirect case expectedSequence(ParseError)
+    indirect case expectedRepeatingSequence(Int, Int, ParseError)
 }

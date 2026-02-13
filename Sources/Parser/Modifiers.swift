@@ -71,6 +71,7 @@ public extension Parser {
     ///   - allowEmpty: accept no instances of elements and separators, returning an empty array.
     ///   - allowTrailingSeparator: accept a single trailing separator in list.
     /// - Returns: A sequence parser which will greedily parse as many elements from its calling parser with a configured separator.
+    @available(*, deprecated, renamed: "separated(by:allowEmpty:consumeTrailingSeparator:)", message: "More swift-like syntax.")
     func sequence<U>(separator: Parser<U> = Parser<Character>.token(",") *> (Parser<String?>.optionalWhitespace()), allowEmpty: Bool = true, allowTrailingSeparator: Bool = true) -> Parser<[T]> {
         .init { input in
             var results: [T] = []
@@ -202,6 +203,145 @@ public extension Parser {
                 default: throw parseError
                 }
             }
+        }
+    }
+    
+    /// Lookahead: Check if parser would succeed without consuming input
+    ///
+    /// Returns a successful result with `()` if the parser would succeed,
+    /// but does not consume any input. If the parser would fail, throws an error.
+    /// - Returns: A parser that succeeds if the lookahead parser would succeed, without consuming input.
+    func lookahead() -> Self {
+        .init { input in
+            let original = input
+            defer { input = original }
+            let result: T
+            do {
+                result = try self.run(&input)
+            } catch {
+                throw error
+            }
+            return result
+        }
+    }
+    
+    /// Negative Lookahead: Check if parser would fail without consuming input
+    ///
+    /// Returns a successful result with `()` if the parser would fail,
+    /// but does not consume any input. If the parser would succeed, throws an error.
+    /// - Returns: A parser that succeeds if the lookahead parser would fail, without consuming input.
+    func negativeLookahead() -> Parser<Void> {
+        .init { input in
+            let original = input
+            do {
+                _ = try self.run(&input)
+                input = original
+                throw ParseError.negativeLookaheadSucceeded
+            } catch let error as ParseError where error == .negativeLookaheadSucceeded {
+                input = original
+                throw error
+            } catch {
+                input = original
+            }
+        }
+    }
+    
+    /// Parse content between two parsers
+    ///
+    /// - Parameters:
+    ///   - left: Parser to match at the start
+    ///   - right: Parser to match at the end
+    /// - Returns: A parser that extracts content between left and right parsers.
+    func between<L, R>(left: Parser<L>, right: Parser<R>) -> Parser<T> {
+        left *> self <* right
+    }
+    
+    /// Separated by parser (no trailing separator allowed)
+    ///
+    /// - Parameters:
+    ///   - separator: The parser to match between elements.
+    ///   - allowEmpty: Whether to allow an empty sequence.
+    ///   - consumeTrailingSeparator: accept a single trailing separator in list.
+    /// - Returns: A parser that matches elements separated by separator.
+    func separated<U>(by separator: Parser<U>, allowEmpty: Bool = false, consumeTrailingSeparator: Bool = false) -> Parser<[T]> {
+        .init { input in
+            var results: [T] = []
+            
+            guard let first = try? self.run(&input) else {
+                if allowEmpty {
+                    return results
+                }
+                throw ParseError.expectedSeparatedSequence
+            }
+            results.append(first)
+            
+            while !input.isEmpty {
+                let original = input
+                if let _ = try? separator.run(&input) {
+                    if let element = try? self.run(&input) {
+                        results.append(element)
+                    } else {
+                        if !consumeTrailingSeparator {
+                            input = original
+                        }
+                        return results
+                    }
+                } else {
+                    input = original
+                    return results
+                }
+            }
+            
+            return results
+        }
+    }
+    
+    /// Repeat parser a specific number of times
+    ///
+    /// - Parameters:
+    ///   - count: Exact number of times to repeat
+    /// - Returns: A parser that matches exactly count occurrences.
+    func `repeat`(for count: Int, allowEmpty: Bool = true) -> Parser<[T]> {
+        .init { input in
+            var results: [T] = []
+            for _ in 0..<count {
+                guard let element = try? self.run(&input) else {
+                    throw ParseError.expectedRepeatingSequence(count, results.count)
+                }
+                results.append(element)
+            }
+            
+            if results.isEmpty && !allowEmpty {
+                throw ParseError.expectedNonZeroRepeatingSequence
+            }
+            
+            return results
+        }
+    }
+    
+    /// Repeat parser within a range
+    ///
+    /// - Parameters:
+    ///   - range: The range of times to repeat (e.g., 1...3 or 0..<5)
+    /// - Returns: A parser that matches between range.lowerBound and range.upperBound occurrences.
+    ///            Fails if more elements could be parsed than the upper bound allows.
+    func `repeat`(in range: ClosedRange<Int>) -> Parser<[T]> {
+        .init { input in
+            var results: [T] = []
+            
+            while results.count < range.upperBound {
+                if let element = try? self.run(&input) {
+                    results.append(element)
+                } else {
+                    break
+                }
+            }
+            
+            if results.count < range.lowerBound {
+                throw ParseError.expectedRepeatingSequence(range.lowerBound, results.count)
+            }
+            
+            return results
         }
     }
 }

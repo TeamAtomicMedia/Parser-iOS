@@ -18,21 +18,6 @@ public extension Parser {
         Parser<T>{ _ in throw err }
     }
     
-    @available(*, deprecated, renamed: "token(_:)", message: "character is deprecated, use functionally identical token instead")
-    static func character(_ char: Character) -> Parser<Character> {
-        .init { input in
-            let original = input
-            guard
-                let nextChar = input.popFirst(),
-                nextChar == char
-            else {
-                input = original
-                throw ParseError.expectedCharacter(char)
-            }
-            return char
-        }
-    }
-    
     static func token(_ char: Character) -> Parser<Character> {
         .init { input in
             guard let nextChar = input.popFirst(), nextChar == char
